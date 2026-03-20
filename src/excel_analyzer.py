@@ -300,6 +300,29 @@ def highlight_outliers(df):
     return df.style.apply(row_highlighter, axis=1)
 
 
+def generate_demo_data(n=30):
+    """Generate two demo DataFrames for visual exploration/testing."""
+    keys = [f"K{str(i).zfill(3)}" for i in range(1, n+1)]
+    rng = np.random.default_rng(42)
+    df1 = pd.DataFrame({
+        'Key': keys,
+        'A': rng.integers(50, 150, size=n).astype(float),
+        'B': (rng.random(n) * 200).round(2),
+        'C': (rng.random(n) * 100).round(1),
+        'Plant': rng.choice(['Plant X', 'Plant Y', 'Plant Z'], size=n),
+        'Material': rng.choice(['M1', 'M2', 'M3', 'M4'], size=n)
+    })
+
+    # create df2 with some variations to induce differences
+    df2 = df1.copy()
+    # add noise to numeric columns
+    df2['A'] = (df2['A'] * (1 + rng.normal(0, 0.07, size=n))).round(2)
+    df2['B'] = (df2['B'] * (1 + rng.normal(0, 0.12, size=n))).round(2)
+    df2['C'] = (df2['C'] * (1 + rng.normal(0, 0.15, size=n))).round(1)
+
+    return df1, df2
+
+
 # Main App logic encapsulated in a function so that importing the module for tests
 # doesn't execute Streamlit UI code. This makes the module safe to import in
 # non-Streamlit environments and allows unit tests to exercise the core
@@ -312,6 +335,20 @@ def run_app():
     # Sidebar Configuration
     st.sidebar.header("⚙️ Configuration")
 
+    # Visual / Theme controls
+    theme_option = st.sidebar.selectbox("Appearance:", ["Auto", "Light", "Dark"], index=0)
+    if theme_option == "Dark":
+        st.markdown(
+            """
+            <style>
+            .stApp { background-color: #0e1117; color: #e6edf3; }
+            .stButton>button { background-color:#1f2937; color:#e6edf3 }
+            .metric-card { background-color: #111827; color: #e6edf3 }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
     # File Upload Section
     st.sidebar.subheader("📁 File Upload")
     col1, col2 = st.sidebar.columns(2)
@@ -322,10 +359,21 @@ def run_app():
     with col2:
         file2 = st.file_uploader("Upload File 2", type=['xlsx', 'xls', 'csv'], key='file2')
 
-    if file1 and file2:
+    # Demo mode for quick visual checks
+    demo_mode = False
+    if not file1 and not file2:
+        if st.sidebar.button("Load Demo Data"):
+            df1, df2 = generate_demo_data(40)
+            demo_mode = True
+
+    if (file1 and file2) or demo_mode:
         # Load files
-        sheets1, excel1 = load_excel_file(file1)
-        sheets2, excel2 = load_excel_file(file2)
+        if demo_mode:
+            sheets1, excel1 = ["Sheet1"], df1
+            sheets2, excel2 = ["Sheet1"], df2
+        else:
+            sheets1, excel1 = load_excel_file(file1)
+            sheets2, excel2 = load_excel_file(file2)
         
         if sheets1 and sheets2:
             # Sheet Selection
