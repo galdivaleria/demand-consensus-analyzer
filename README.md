@@ -85,6 +85,12 @@ A powerful browser-based application for comparing two Excel files with advanced
 - Enables summary cards and plant-based analysis
 - Select "None" to skip plant-based aggregation
 
+### Material Column
+- Optional column used to count distinct materials per plant
+- When selected, the plant summary page shows how many unique
+  materials each plant has
+- Useful for understanding product variety or inventory counts
+
 ## Output
 
 ### Metrics Provided
@@ -92,8 +98,7 @@ A powerful browser-based application for comparing two Excel files with advanced
 - **Outliers Detected**: Count of records exceeding threshold
 - **Average Difference**: Mean percentage difference
 - **Max Difference**: Highest percentage difference
-- **Plant-based Outlier %**: Percentage of outliers per plant
-
+- **Plant-based Outlier %**: Percentage of outliers per plant- **Materials per Plant**: Number of unique material values associated with each plant (if material column selected)
 ### Export Options
 - Download comparison results as CSV
 - Filter by plant, metrics, or outlier status
@@ -179,6 +184,17 @@ For issues or feature requests, check:
   
 - **v1.0.0** (2024): Python/Streamlit version (archived)
   - Initial release with core features
+
+## Development & Testing
+
+The Python backend (v1.0.0) includes a small automated test suite that covers both functionality and security scanning. You can run the tests using `pytest` after installing the development dependencies:
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+pytest
+```
+
+The security test uses [Bandit](https://bandit.readthedocs.io/) to inspect the `src/` folder for common Python vulnerabilities and fails if any **HIGH** severity issue is detected.
 
 ## License
 

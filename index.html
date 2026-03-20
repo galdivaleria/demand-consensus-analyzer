@@ -4,9 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Excel Analyzer - Demand Consensus</title>
+    <!-- third‑party libraries from CDN; use specific versions to avoid warnings -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <!-- plotly v2.x (replace with latest release as needed) -->
+    <script src="https://cdn.plot.ly/plotly-2.26.1.min.js"></script>
+<!--
+    Note: Tracking Prevention messages come from browser blocking third-party
+    storage/cookies when loading these CDN scripts.  They are harmless for our
+    use case; if you need to avoid them you can serve the libraries locally or
+    adjust browser privacy settings. -->
     <style>
         * {
             margin: 0;
@@ -444,15 +451,21 @@
                 <div class="form-group">
                     <label>🎯 Outlier Threshold</label>
                     <div class="radio-group">
-                        <label>
-                            <input type="radio" name="threshold" value="5" checked /> >5%
-                        </label>
-                        <label>
-                            <input type="radio" name="threshold" value="10" /> >10%
-                        </label>
-                        <label>
-                            <input type="radio" name="threshold" value="custom" /> Custom
-                        </label>
+                        <label><input type="radio" name="threshold" value="1" /> >1%</label>
+                        <label><input type="radio" name="threshold" value="2" /> >2%</label>
+                        <label><input type="radio" name="threshold" value="5" checked /> >5%</label>
+                        <label><input type="radio" name="threshold" value="10" /> >10%</label>
+                        <label><input type="radio" name="threshold" value="15" /> >15%</label>
+                        <label><input type="radio" name="threshold" value="20" /> >20%</label>
+                        <label><input type="radio" name="threshold" value="25" /> >25%</label>
+                        <label><input type="radio" name="threshold" value="30" /> >30%</label>
+                        <label><input type="radio" name="threshold" value="40" /> >40%</label>
+                        <label><input type="radio" name="threshold" value="50" /> >50%</label>
+                        <label><input type="radio" name="threshold" value="60" /> >60%</label>
+                        <label><input type="radio" name="threshold" value="70" /> >70%</label>
+                        <label><input type="radio" name="threshold" value="80" /> >80%</label>
+                        <label><input type="radio" name="threshold" value="90" /> >90%</label>
+                        <label><input type="radio" name="threshold" value="custom" /> Custom</label>
                     </div>
                 </div>
 
@@ -461,11 +474,17 @@
                     <input type="number" id="customThreshold" min="1" max="100" value="5" />
                 </div>
 
-                <!-- Plant Column Selection -->
+                <!-- Plant and Material Column Selection -->
                 <div class="form-group">
                     <label>🏭 Plant Column (Optional)</label>
                     <select id="plantColumn" disabled>
                         <option value="">None (No grouping)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>📦 Material Column (Optional)</label>
+                    <select id="materialColumn" disabled>
+                        <option value="">None</option>
                     </select>
                 </div>
 

@@ -11,6 +11,7 @@ const file2Input = document.getElementById('file2');
 const sheet1Select = document.getElementById('sheet1');
 const sheet2Select = document.getElementById('sheet2');
 const plantColumnSelect = document.getElementById('plantColumn');
+const materialColumnSelect = document.getElementById('materialColumn');
 const compareBtn = document.getElementById('compareBtn');
 const mainContent = document.getElementById('mainContent');
 const thresholdRadios = document.querySelectorAll('input[name="threshold"]');
@@ -60,8 +61,8 @@ function handleFile1Upload(e) {
             });
             sheet1Select.disabled = false;
 
-            // Load first sheet to populate plant column options
-            updatePlantColumns();
+            // Load first sheet to populate plant/material column options
+            updateColumnSelectors();
             checkIfReadyToCompare();
         } catch (error) {
             showAlert('Error loading File 1: ' + error.message, 'error');
@@ -100,7 +101,7 @@ function handleFile2Upload(e) {
     reader.readAsArrayBuffer(file);
 }
 
-function updatePlantColumns() {
+function updateColumnSelectors() {
     if (!file1Data || !sheet1Select.value) return;
 
     try {
@@ -110,23 +111,31 @@ function updatePlantColumns() {
         if (df.length === 0) return;
 
         const columns = Object.keys(df[0]);
+
+        // plant
         plantColumnSelect.innerHTML = '<option value="">None (No grouping)</option>';
+        // material
+        materialColumnSelect.innerHTML = '<option value="">None</option>';
 
         columns.forEach(col => {
             if (col !== 'Key') {
-                const option = document.createElement('option');
-                option.value = col;
-                option.textContent = col;
-                plantColumnSelect.appendChild(option);
+                const opt1 = document.createElement('option');
+                opt1.value = col;
+                opt1.textContent = col;
+                plantColumnSelect.appendChild(opt1);
+
+                const opt2 = opt1.cloneNode(true);
+                materialColumnSelect.appendChild(opt2);
             }
         });
         plantColumnSelect.disabled = false;
+        materialColumnSelect.disabled = false;
     } catch (error) {
-        console.error('Error updating plant columns:', error);
+        console.error('Error updating column selectors:', error);
     }
 }
 
-sheet1Select.addEventListener('change', updatePlantColumns);
+sheet1Select.addEventListener('change', updateColumnSelectors);
 
 function checkIfReadyToCompare() {
     const ready = file1Data && file2Data && sheet1Select.value && sheet2Select.value;
@@ -143,6 +152,7 @@ function handleComparison() {
     const sheet2 = sheet2Select.value;
     const threshold = getThreshold();
     const plantColumn = plantColumnSelect.value || null;
+    const materialColumn = materialColumnSelect.value || null;
 
     try {
         const df1 = XLSX.utils.sheet_to_json(file1Data.Sheets[sheet1]);
@@ -159,7 +169,7 @@ function handleComparison() {
         }
 
         // Perform comparison
-        comparisonResult = compareDataframes(df1, df2, threshold, plantColumn);
+        comparisonResult = compareDataframes(df1, df2, threshold, plantColumn, materialColumn);
 
         if (!comparisonResult) {
             showAlert('No matching Keys found between files', 'error');
@@ -167,14 +177,14 @@ function handleComparison() {
         }
 
         // Display results
-        displayResults(comparisonResult, threshold, plantColumn);
+        displayResults(comparisonResult, threshold, plantColumn, materialColumn);
         showAlert(`✅ Comparison complete - ${comparisonResult.length} records with matching Keys found`, 'success');
     } catch (error) {
         showAlert('Error during comparison: ' + error.message, 'error');
     }
 }
 
-function compareDataframes(df1, df2, threshold, plantColumn) {
+function compareDataframes(df1, df2, threshold, plantColumn, materialColumn) {
     // Create index maps
     const df2Map = {};
     df2.forEach(row => {
@@ -193,6 +203,9 @@ function compareDataframes(df1, df2, threshold, plantColumn) {
 
         if (plantColumn && row1[plantColumn]) {
             comparisonRow[plantColumn] = row1[plantColumn];
+        }
+        if (materialColumn && row1[materialColumn]) {
+            comparisonRow[materialColumn] = row1[materialColumn];
         }
 
         let hasOutlier = false;
@@ -246,7 +259,7 @@ function getNumericColumns(df) {
     return numericCols;
 }
 
-function displayResults(data, threshold, plantColumn) {
+function displayResults(data, threshold, plantColumn, materialColumn) {
     const numericCols = getNumericColumnsFromComparison(data);
 
     let html = `
@@ -283,7 +296,7 @@ function displayResults(data, threshold, plantColumn) {
         html += `
         <!-- Plant Summary Tab -->
         <div id="plants" class="tab-content">
-            ${createPlantSummary(data, plantColumn)}
+            ${createPlantSummary(data, plantColumn, materialColumn)}
         </div>
         `;
     }
@@ -291,7 +304,7 @@ function displayResults(data, threshold, plantColumn) {
     html += `
         <!-- Detailed Tab -->
         <div id="detailed" class="tab-content">
-            ${createDetailedTab(data, numericCols, plantColumn)}
+            ${createDetailedTab(data, numericCols, plantColumn, materialColumn)}
         </div>
     `;
 
@@ -404,7 +417,7 @@ function createOutlierTable(data, numericCols) {
     return html;
 }
 
-function createPlantSummary(data, plantColumn) {
+function createPlantSummary(data, plantColumn, materialColumn) {
     const plantSummary = {};
 
     data.forEach(row => {
@@ -412,12 +425,16 @@ function createPlantSummary(data, plantColumn) {
         if (!plantSummary[plant]) {
             plantSummary[plant] = {
                 records: 0,
-                outliers: 0
+                outliers: 0,
+                materials: new Set()
             };
         }
         plantSummary[plant].records++;
         if (row.hasOutlier) {
             plantSummary[plant].outliers++;
+        }
+        if (materialColumn && row[materialColumn]) {
+            plantSummary[plant].materials.add(row[materialColumn]);
         }
     });
 
@@ -425,6 +442,13 @@ function createPlantSummary(data, plantColumn) {
 
     Object.entries(plantSummary).forEach(([plant, stats]) => {
         const outlierPct = ((stats.outliers / stats.records) * 100).toFixed(1);
+        let matsHtml = '';
+        if (materialColumn) {
+            matsHtml = `<div class="plant-stat">
+                            <span>Materials:</span>
+                            <span class="plant-stat-value">${stats.materials.size}</span>
+                        </div>`;
+        }
         html += `
             <div class="plant-card">
                 <h3>🏭 ${plant}</h3>
@@ -440,6 +464,7 @@ function createPlantSummary(data, plantColumn) {
                     <span>Outlier %:</span>
                     <span class="plant-stat-value">${outlierPct}%</span>
                 </div>
+                ${matsHtml}
             </div>
         `;
     });
@@ -459,7 +484,7 @@ function createPlantSummary(data, plantColumn) {
     return html;
 }
 
-function createDetailedTab(data, numericCols, plantColumn) {
+function createDetailedTab(data, numericCols, plantColumn, materialColumn) {
     let html = `
         <div class="filter-section">
             <div class="filter-row">
@@ -473,6 +498,14 @@ function createDetailedTab(data, numericCols, plantColumn) {
                     <label>Filter by Plant:</label>
                     <select id="plantFilter">
                         <option value="">All Plants</option>
+                    </select>
+                </div>
+                ` : ''}
+                ${materialColumn ? `
+                <div>
+                    <label>Filter by Material:</label>
+                    <select id="materialFilter">
+                        <option value="">All Materials</option>
                     </select>
                 </div>
                 ` : ''}
@@ -498,20 +531,35 @@ function createDetailedTab(data, numericCols, plantColumn) {
             });
         }, 50);
     }
+    if (materialColumn) {
+        setTimeout(() => {
+            const mats = [...new Set(data.map(r => r[materialColumn]))].filter(m => m);
+            const matFilter = document.getElementById('materialFilter');
+            mats.forEach(mat => {
+                const option = document.createElement('option');
+                option.value = mat;
+                option.textContent = mat;
+                matFilter.appendChild(option);
+            });
+        }, 50);
+    }
 
     setTimeout(() => {
-        displayDetailedTable(data, numericCols, plantColumn);
+        displayDetailedTable(data, numericCols, plantColumn, materialColumn);
     }, 100);
 
     return html;
 }
 
-function displayDetailedTable(data, numericCols, plantColumn, filtered = null) {
+function displayDetailedTable(data, numericCols, plantColumn, materialColumn, filtered = null) {
     const displayData = filtered || data;
     let html = '<table><thead><tr><th>Key</th>';
 
     if (plantColumn) {
         html += `<th>${plantColumn}</th>`;
+    }
+    if (materialColumn) {
+        html += `<th>${materialColumn}</th>`;
     }
 
     numericCols.slice(0, 3).forEach(col => {
@@ -559,9 +607,13 @@ function applyDetailedFilters() {
     if (plantFilter) {
         filtered = filtered.filter(row => row[document.getElementById('plantColumn').value] === plantFilter);
     }
+    const materialFilter = document.getElementById('materialFilter')?.value || '';
+    if (materialFilter) {
+        filtered = filtered.filter(row => row[document.getElementById('materialColumn').value] === materialFilter);
+    }
 
     const numericCols = getNumericColumnsFromComparison(comparisonResult);
-    displayDetailedTable(comparisonResult, numericCols, document.getElementById('plantColumn').value, filtered);
+    displayDetailedTable(comparisonResult, numericCols, document.getElementById('plantColumn').value, document.getElementById('materialColumn').value, filtered);
 }
 
 function switchTab(e, tabName) {
